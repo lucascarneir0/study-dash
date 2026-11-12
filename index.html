@@ -177,27 +177,36 @@ function normalizeStoredData(s){
     return s;
 }
 
-async function load() {
+function load() {
     try {
-        const docRef = window.doc(window.db, "painel", window.DOC_ID);
-        const docSnap = await window.getDoc(docRef);
-        if (docSnap.exists()) {
-            const s = normalizeStoredData(docSnap.data());
-            if (s) return s;
+        const item = localStorage.getItem(STORAGE);
+        if(item) {
+            const parsed = JSON.parse(item);
+            const s = normalizeStoredData(parsed);
+            if(s) return s;
+        }
+        const legacy = localStorage.getItem(LEGACY_STORAGE);
+        if(legacy) {
+            const parsedLegacy = JSON.parse(legacy);
+            const s = normalizeStoredData(parsedLegacy);
+            if(s) return s;
+        }
+    } catch(e) {}
+    return freshData();
+}
+
+function save() {
+    try {
+        localStorage.setItem(STORAGE, JSON.stringify(data));
+        // Salva no Firebase em segundo plano sem bloquear a interface
+        if (window.db && window.setDoc && window.doc) {
+            const docRef = window.doc(window.db, "painel", window.DOC_ID);
+            window.setDoc(docRef, data).catch(err => console.error("Erro ao sincronizar Firebase:", err));
         }
     } catch (e) {
-        console.error("Erro ao carregar do Firebase:", e);
+        console.error("Erro ao salvar:", e);
     }
-    
-    // Tenta resgatar os dados do navegador caso o Firebase esteja vazio
-    try {
-        const local = localStorage.getItem(STORAGE);
-        if (local) {
-            const parsed = JSON.parse(local);
-            const s = normalizeStoredData(parsed);
-            if (s) return s;
-        }
-    } catch (err) {}
+}
 
     return freshData();
 }
