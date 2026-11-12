@@ -179,21 +179,34 @@ function normalizeStoredData(s){
 
 async function load() {
     try {
-        const docRef = db.collection("painel").doc(DOC_ID);
-        const doc = await docRef.get();
-        if (doc.exists) {
-            const s = normalizeStoredData(doc.data());
+        const docRef = window.doc(window.db, "painel", window.DOC_ID);
+        const docSnap = await window.getDoc(docRef);
+        if (docSnap.exists()) {
+            const s = normalizeStoredData(docSnap.data());
             if (s) return s;
         }
     } catch (e) {
         console.error("Erro ao carregar do Firebase:", e);
     }
+    
+    // Tenta resgatar os dados do navegador caso o Firebase esteja vazio
+    try {
+        const local = localStorage.getItem(STORAGE);
+        if (local) {
+            const parsed = JSON.parse(local);
+            const s = normalizeStoredData(parsed);
+            if (s) return s;
+        }
+    } catch (err) {}
+
     return freshData();
 }
 
 async function save() {
     try {
-        await db.collection("painel").doc(DOC_ID).set(data);
+        localStorage.setItem(STORAGE, JSON.stringify(data));
+        const docRef = window.doc(window.db, "painel", window.DOC_ID);
+        await window.setDoc(docRef, data);
     } catch (e) {
         console.error("Erro ao salvar no Firebase:", e);
     }
