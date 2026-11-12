@@ -797,25 +797,39 @@ function openEditHistory(kind,index){const i=Number(index);if(!Number.isInteger(
 document.getElementById('editHistoryForm').onsubmit=e=>{e.preventDefault();const kind=document.getElementById('editHistoryKind').value,index=Number(document.getElementById('editHistoryIndex').value);if(!Number.isInteger(index)||index<0)return;if(kind==='session'){const s=data.sessions[index];if(!s)return;const hours=Math.max(0,Math.floor(Number(document.getElementById('editHistoryHours').value)||0));const minutes=Math.max(0,Math.min(59,Math.floor(Number(document.getElementById('editHistoryMinutes').value)||0)));const duration=hours*3600+minutes*60;if(duration<60){alert('Informe pelo menos 1 minuto de duração.');return}s.subject=document.getElementById('editHistorySubject').value;delete s.type;s.duration=duration}else if(kind==='question'){const q=data.questions[index];if(!q)return;const total=Math.floor(Number(document.getElementById('editHistoryTotal').value)||0);const hits=Math.floor(Number(document.getElementById('editHistoryHits').value)||0);if(total<1||hits<0||hits>total){alert('Verifique o total de questões e os acertos.');return}q.subject=document.getElementById('editHistorySubject').value;q.total=total;q.hits=hits}else{return}save();close('editHistoryModal');renderAll()};
 
 // events
-Array.from(document.querySelectorAll('[data-close]')).forEach(b=>b.addEventListener('click',()=>close(b.dataset.close)));
-document.getElementById('configureGoalsBtn').onclick=()=>{document.getElementById('goalStudyInput').value=data.goals.studyMinutes;document.getElementById('goalQuestionsInput').value=data.goals.questions;document.getElementById('goalAccuracyInput').value=data.goals.accuracy;open('goalsModal')};
-document.getElementById('goalsForm').onsubmit=e=>{e.preventDefault();data.goals={studyMinutes:Number(goalStudyInput.value),questions:Number(goalQuestionsInput.value),accuracy:Number(goalAccuracyInput.value)};save();close('goalsModal');renderGoals()};
-document.getElementById('startBtn').onclick=startTimer;document.getElementById('pauseBtn').onclick=pauseTimer;document.getElementById('saveTimerBtn').onclick=saveCurrent;
-document.getElementById('addQuestionsBtn').onclick=()=>open('questionsModal');document.getElementById('questionsForm').onsubmit=e=>{e.preventDefault();const total=Number(questionTotal.value),hits=Number(questionHits.value),subject=questionSubject.value;if(total<1||hits<0||hits>total||!subject){alert('Verifique os valores.');return}data.questions.push({id:uid('q'),date:new Date().toISOString(),subject,total,hits});save();e.target.reset();close('questionsModal');renderAll()};
-function manageSubjects(){manageSubjectsList.innerHTML=data.subjects.map(s=>`<div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800"><span class="text-sm">${esc(s.name)}</span><button type="button" data-del="${esc(s.id)}" class="text-rose-300 p-2" title="Excluir"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('');document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const s=data.subjects.find(x=>x.id===b.dataset.del);if(!s)return;if(!confirm(`Excluir a matéria "${s.name}"?`))return;data.subjects=data.subjects.filter(x=>x.id!==s.id);save();manageSubjects();renderAll()});lucide.createIcons()}
-function openSubjects(){manageSubjects();open('manageSubjectsModal')}document.getElementById('addSubjectBtn').onclick=openSubjects;document.getElementById('addSubjectBtnTop').onclick=openSubjects;
-document.getElementById('manageSubjectForm').onsubmit=e=>{e.preventDefault();const n=manageSubjectName.value.trim();if(!n)return;if(data.subjects.some(s=>s.name.toLowerCase()===n.toLowerCase())){alert('Essa matéria já está cadastrada.');return}data.subjects.push({id:uid('sub'),name:n});save();manageSubjectName.value='';manageSubjects();renderAll()};
-document.querySelectorAll('.period').forEach(b=>b.onclick=()=>atualizarDashboard(b.dataset.period));
-document.getElementById('exportBtn').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({...data,edital_verticalizado_data:editalData},null,2)],{type:'application/json'}));a.download=`studydash-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()};
-document.getElementById('importInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!Array.isArray(x.subjects)||!Array.isArray(x.sessions)||!Array.isArray(x.questions))throw 0;x.sessions=x.sessions.filter(s=>s&&s.subject&&Number(s.duration)>=0).map(({type,...s})=>s);x.goals={...freshData().goals,...(x.goals||{})};x.edital_gcm=x.edital_gcm||{};x.reviews=Array.isArray(x.reviews)?x.reviews:[];if(x.edital_verticalizado_data&&typeof x.edital_verticalizado_data==='object'){editalData=x.edital_verticalizado_data;saveEditalData()}data=x;save();timer={running:false,startedAt:null,elapsed:0,interval:null};renderAll();alert('Backup importado com sucesso.')}catch(err){alert('Arquivo inválido ou incompatível.')}e.target.value=''};r.readAsText(f)};
-document.getElementById('resetDataBtn').onclick=()=>{if(!confirm('Isso apagará todas as sessões e questões e restaurará as matérias padrão. Continuar?'))return;data=freshData();data.edital_gcm={};data.reviews=[];editalData={};saveEditalData();save();timer={running:false,startedAt:null,elapsed:0,interval:null};renderAll()};
+// events e inicialização seguros
+document.addEventListener('DOMContentLoaded', () => {
+    // Carrega os dados salvos
+    if (typeof load === 'function') {
+        data = load();
+    }
 
-function setActiveTab(tab){['monitoramento','editais','revisoes'].forEach(name=>{const el=document.getElementById(name==='monitoramento'?'monitoramentoPage':name==='editais'?'editaisPage':'revisoesPage');el.classList.toggle('hidden',name!==tab)});document.querySelectorAll('.sidebar-link').forEach(b=>{const active=b.dataset.tab===tab;b.classList.toggle('active',active);b.classList.toggle('text-slate-400',!active)});document.getElementById('sidebar').classList.add('-translate-x-full');document.getElementById('sidebarOverlay').classList.add('hidden');if(tab==='editais')renderEdital();if(tab==='revisoes')renderReviews();lucide.createIcons()}
-document.querySelectorAll('.sidebar-link').forEach(b=>b.addEventListener('click',()=>setActiveTab(b.dataset.tab)));
-document.getElementById('sidebarToggle').onclick=()=>{document.getElementById('sidebar').classList.toggle('-translate-x-full');document.getElementById('sidebarOverlay').classList.toggle('hidden')};
-document.getElementById('sidebarOverlay').onclick=()=>{document.getElementById('sidebar').classList.add('-translate-x-full');document.getElementById('sidebarOverlay').classList.add('hidden')};
+    // Vincula os eventos aos botões agora que o HTML existe
+    Array.from(document.querySelectorAll('[data-close]')).forEach(b=>b.addEventListener('click',()=>close(b.dataset.close)));
+    const configureGoalsBtn = document.getElementById('configureGoalsBtn');
+    if(configureGoalsBtn) configureGoalsBtn.onclick=()=>document.getElementById('goalStudyInput').value=data.goals.studyMinutes;
+    const goalsForm = document.getElementById('goalsForm');
+    if(goalsForm) goalsForm.onsubmit=e=>{e.preventDefault();data.goals={studyMinutes:Number(goalStudyInput.value),questions:Number(goalQuestionsInput.value),accuracy:Number(goalAccuracyInput.value)};save();close('goalsModal');renderGoals();};
+    
+    const startBtn = document.getElementById('startBtn');
+    if(startBtn) startBtn.onclick=startTimer;
+    const pauseBtn = document.getElementById('pauseBtn');
+    if(pauseBtn) pauseBtn.onclick=pauseTimer;
+    
+    const addQuestionsBtn = document.getElementById('addQuestionsBtn');
+    if(addQuestionsBtn) addQuestionsBtn.onclick=()=>open('questionsModal');
+    
+    const exportBtn = document.getElementById('exportBtn');
+    if(exportBtn) exportBtn.onclick=()=>const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='studydash-backup.json';a.click();
+    
+    const importInput = document.getElementById('importInput');
+    if(importInput) importInput.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);data=normalizeStoredData(parsed)||freshData();save();renderAll();alert('Importado com sucesso!');}catch(err){alert('Erro ao importar arquivo.');}};r.readAsText(f);};
 
-// initialize
-updateTimer();
-renderAll();
+    const resetDataBtn = document.getElementById('resetDataBtn');
+    if(resetDataBtn) resetDataBtn.onclick=()=>{if(!confirm('Isso apagará todas as sessões e questões e restaurará as padrão. Deseja continuar?'))return;localStorage.removeItem(STORAGE);data=freshData();save();renderAll();};
+
+    // Inicializa a tela e o cronômetro
+    updateTimer();
+    renderAll();
+});
 </body></html>
