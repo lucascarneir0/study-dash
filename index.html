@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StudyDash — Painel de Estudos</title>
-<script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/lucide@latest"></script><script src="https://cdn.jsdelivr.net/npm/chart.js">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Firebase SDK Modular -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
@@ -21,17 +25,16 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Torna as funções acessíveis para o painel principal
     window.db = db;
     window.DOC_ID = "dados_estudo_lucas";
     window.getDoc = getDoc;
     window.setDoc = setDoc;
     window.doc = doc;
 </script>
+
 <script>tailwind.config={theme:{extend:{colors:{graphite:'#0f172a',panel:'#1e293b'}}}}</script>
 <style>
 *{box-sizing:border-box}html{overflow-x:hidden}body{background:#0f172a;color:#e2e8f0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden}.card{background:#1e293b;border:1px solid #334155;border-radius:16px;box-shadow:0 12px 35px rgba(0,0,0,.16);min-width:0}.muted{color:#94a3b8}.input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:10px;padding:11px 12px;outline:none;min-height:44px}.input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}button{cursor:pointer;touch-action:manipulation;min-height:44px}.btn{transition:.18s}.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.progress{height:7px;border-radius:99px;background:#0f172a;overflow:hidden}.progress>span{display:block;height:100%;border-radius:inherit;transition:width .3s}.modal-backdrop{background:rgba(2,6,23,.78);backdrop-filter:blur(6px);overflow-y:auto}.chart-wrap{position:relative;width:100%;height:260px;min-width:0}.chart-wrap canvas{width:100%!important;height:100%!important;max-width:100%}@media(max-width:639px){.btn:hover{transform:none}.period-filter{width:100%;overflow-x:auto}.period-filter .period{flex:1;white-space:nowrap}.timer-display{font-size:2.6rem}.modal-card{width:91.666667%;max-width:32rem;max-height:85vh;overflow-y:auto}.mobile-full{width:100%}}
-
 .sidebar-link{transition:background .18s,color .18s,border-color .18s;min-height:46px}.sidebar-link.active{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.22)}
 @media(min-width:1024px){#mainContent{min-height:100vh}}
 </style>
@@ -164,10 +167,6 @@ const freshData=()=>({subjects:structuredClone(defaultSubjects),sessions:[],ques
 let data=load();data.edital_gcm=data.edital_gcm||{};data.reviews=Array.isArray(data.reviews)?data.reviews:[];let periodoSelecionado='week';let period=periodoSelecionado;let donutChart,evolutionChart,timelineChart;let timer={running:false,startedAt:null,elapsed:0,interval:null};
 const quotes=['O cansaço passa, a aprovação fica.','Disciplina vence a motivação quando a motivação acaba.','Faça o que precisa ser feito, mesmo sem vontade.','Você não precisa de sorte. Precisa de constância.','Enquanto você adia, alguém está estudando.','Resultado não negocia com desculpas.','A prova não vai facilitar porque você não se preparou.','Seu futuro depende do que você faz hoje.'];
 
-// Inicializa o Firestore
-const db = firebase.firestore();
-const DOC_ID = "dados_estudo_lucas"; // ID único para os seus dados
-
 function normalizeStoredData(s){
     if(!s||!Array.isArray(s.subjects)||!Array.isArray(s.sessions)||!Array.isArray(s.questions))return null;
     defaultSubjects.forEach(b=>{if(!s.subjects.some(x=>x.name===b.name))s.subjects.push({...b})});
@@ -198,7 +197,6 @@ function load() {
 function save() {
     try {
         localStorage.setItem(STORAGE, JSON.stringify(data));
-        // Salva no Firebase em segundo plano sem bloquear a interface
         if (window.db && window.setDoc && window.doc) {
             const docRef = window.doc(window.db, "painel", window.DOC_ID);
             window.setDoc(docRef, data).catch(err => console.error("Erro ao sincronizar Firebase:", err));
@@ -208,18 +206,6 @@ function save() {
     }
 }
 
-    return freshData();
-}
-
-async function save() {
-    try {
-        localStorage.setItem(STORAGE, JSON.stringify(data));
-        const docRef = window.doc(window.db, "painel", window.DOC_ID);
-        await window.setDoc(docRef, data);
-    } catch (e) {
-        console.error("Erro ao salvar no Firebase:", e);
-    }
-}
 function formatDuration(sec,compact=false){sec=Math.floor(Math.max(0,sec));let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return compact?(h?`${h}h ${String(m).padStart(2,'0')}m`:`${m}m ${String(s).padStart(2,'0')}s`):`${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`}
 function today(){return new Date().toDateString()}function todaySessions(){return data.sessions.filter(s=>new Date(s.date).toDateString()===today())}function todayQuestions(){return data.questions.filter(q=>new Date(q.date).toDateString()===today())}
 function getPeriodBounds(value=periodoSelecionado){const now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),now.getDate()),end=new Date(start);if(value==='day'){end.setDate(end.getDate()+1)}else if(value==='week'){const weekday=(start.getDay()+6)%7;start.setDate(start.getDate()-weekday);end.setTime(start.getTime());end.setDate(end.getDate()+7)}else if(value==='month'){start.setDate(1);end.setFullYear(start.getFullYear(),start.getMonth()+1,1)}else if(value==='year'){start.setMonth(0,1);end.setFullYear(start.getFullYear()+1,0,1)}else return null;return {start,end}}
@@ -255,7 +241,7 @@ const editalPMBASoldado=[
  {name:'5. Atualidades',topics:['Fatos e notícias relevantes nacionais e internacionais dos últimos meses','Economia, política, sociedade, educação, segurança pública e tecnologia','Cultura e sociedade baiana e brasileira']},
  {name:'6. Noções de Direito Constitucional',topics:['Constituição Federal de 1988: princípios fundamentais','Direitos e garantias fundamentais (direitos individuais, coletivos, sociais, nacionalidade, cidadania, direitos políticos)','Organização político-administrativa do Estado','Administração Pública (disposições gerais e servidores públicos)','Defesa do Estado e das Instituições Democráticas','Segurança Pública (art. 144)','Constituição do Estado da Bahia (disposições aplicáveis aos militares)']},
  {name:'7. Direitos Humanos',topics:['Teoria geral dos Direitos Humanos','Declaração Universal dos Direitos Humanos (1948)','Pacto Internacional dos Direitos Civis e Políticos','Pacto Internacional dos Direitos Econômicos, Sociais e Culturais','Convenção Americana de Direitos Humanos (Pacto de São José da Costa Rica)','Direitos humanos e segurança pública']},
- {name:'8. Direito Administrativo',topics:['Estado, governo e administração pública','Princípios expressos e implícitos da Administração Pública','Poderes administrativos (vinculado, discricionário, hierárquico, disciplinar, regulamentar, polícia)','Atos administrativos (conceito, requisitos, atributos, classificação, espécies, invalidação e revogação)','Serviços públicos','Estatuto dos Servidores Públicos do Estado da Bahia']},
+ {name:'8. Direito Administrativo',topics:['Estado, governo e administração pública','Princípios expressos e implícitos da Administração Pública','Poderes administrativos (vinculado, discricionário, hierárquico, disciplinar, regulamentar, polícia)','Atos administrativos (conceito, requisitos, atributos, classification, espécies, invalidação e revogação)','Serviços públicos','Estatuto dos Servidores Públicos do Estado da Bahia']},
  {name:'9. Direito Penal',topics:['Princípios do Direito Penal','A lei penal no tempo e no espaço','O fato típico e seus elementos (conduta, resultado, nexo causal, tipicidade)','Dolo e culpa','Ilicitude e causas de exclusão','Culpabilidade','Concurso de crimes','Crimes contra a pessoa','Crimes contra o patrimônio','Crimes contra a administração pública']},
  {name:'10. Igualdade Racial e de Gênero',topics:['Constituição Federal (disposições sobre igualdade)','Estatuto da Igualdade Racial (Lei nº 12.288/2010)','Crimes resultantes de preconceito de raça ou de cor (Lei nº 7.716/1989)','Lei Maria da Penha (Lei nº 11.340/2006)','Direitos humanos das mulheres e combate à discriminação de gênero']}
 ];
@@ -278,72 +264,70 @@ const editalTranspetro=[
  {name:'4. Noções de Administração Financeira e Orçamentária (AFO)',topics:['Conceitos básicos de finanças','Orçamento público: princípios e ciclos','Planejamento e orçamento na administração pública','Receita e despesa pública','Lei de Responsabilidade Fiscal (LC nº 101/2000)']}
 ];
 
-
 const editalPMESP_Soldado={name:'PMESP - SOLDADO',date:'2027-02-28',dateLabel:'28 de fevereiro de 2027',status:'EDITAL PUBLICADO',board:'VUNESP • PMESP',subjects:[
  {name:'1. Língua Portuguesa',topics:[
-   'Leitura e interpretação de diversos tipos de textos (literários e não literários)',
-   'Sinônimos e antônimos',
-   'Sentido próprio e figurado das palavras',
-   'Pontuação',
-   'Classes de palavras: substantivo, adjetivo, numeral, pronome, verbo, advérbio, preposição e conjunção: emprego e sentido que imprimem às relações que estabelecem',
-   'Concordância verbal e nominal',
-   'Regência verbal e nominal',
-   'Colocação pronominal',
-   'Crase'
+  'Leitura e interpretação de diversos tipos de textos (literários e não literários)',
+  'Sinônimos e antônimos',
+  'Sentido próprio e figurado das palavras',
+  'Pontuação',
+  'Classes de palavras: substantivo, adjetivo, numeral, pronome, verbo, advérbio, preposição e conjunção: emprego e sentido que imprimem às relações que estabelecem',
+  'Concordância verbal e nominal',
+  'Regência verbal e nominal',
+  'Colocação pronominal',
+  'Crase'
  ]},
  {name:'2. Matemática',topics:[
-   'Números inteiros: operações e propriedades',
-   'Números racionais, representação fracionária e decimal: operações e propriedades',
-   'Mínimo múltiplo comum',
-   'Razão e proporção',
-   'Porcentagem',
-   'Regra de três simples',
-   'Média aritmética simples',
-   'Equação do 1º grau',
-   'Sistema de equações do 1º grau',
-   'Sistema métrico: medidas de tempo, comprimento, superfície e capacidade',
-   'Relação entre grandezas: tabelas e gráficos',
-   'Noções de geometria: forma, perímetro, área, volume, teorema de Pitágoras',
-   'Raciocínio lógico',
-   'Resolução de situações-problema'
+  'Números inteiros: operações e propriedades',
+  'Números racionais, representação fracionária e decimal: operações e propriedades',
+  'Mínimo múltiplo comum',
+  'Razão e proporção',
+  'Porcentagem',
+  'Regra de três simples',
+  'Média aritmética simples',
+  'Equação do 1º grau',
+  'Sistema de equações do 1º grau',
+  'Sistema métrico: medidas de tempo, comprimento, superfície e capacidade',
+  'Relação entre grandezas: tabelas e gráficos',
+  'Noções de geometria: forma, perímetro, área, volume, teorema de Pitágoras',
+  'Raciocínio lógico',
+  'Resolução de situações-problema'
  ]},
  {name:'3. Conhecimentos Gerais',topics:[
-   'Primeira Guerra Mundial',
-   'O nazifascismo e a Segunda Guerra Mundial',
-   'A Guerra Fria',
-   'Globalização e as políticas neoliberais',
-   'A Revolução de 1930 e a Era Vargas',
-   'As Constituições Republicanas',
-   'A estrutura política e os movimentos sociais no período militar',
-   'A abertura política e a redemocratização do Brasil',
-   'A nova ordem mundial, o espaço geopolítico e a globalização',
-   'Os principais problemas ambientais',
-   'A natureza brasileira (relevo, hidrografia, clima e vegetação)',
-   'A população: crescimento, distribuição, estrutura e movimentos',
-   'As atividades econômicas: industrialização e urbanização, fontes de energia e agropecuária',
-   'Os impactos ambientais',
-   'Atualidades: fatos políticos, econômicos, sociais e culturais, nacionais e internacionais, ocorridos a partir de 6 meses anteriores à publicação do Edital'
+  'Primeira Guerra Mundial',
+  'O nazifascismo e a Segunda Guerra Mundial',
+  'A Guerra Fria',
+  'Globalização e as políticas neoliberais',
+  'A Revolução de 1930 e a Era Vargas',
+  'As Constituições Republicanas',
+  'A estrutura política e os movimentos sociais no período militar',
+  'A abertura política e a redemocratização do Brasil',
+  'A nova ordem mundial, o espaço geopolítico e a globalização',
+  'Os principais problemas ambientais',
+  'A natureza brasileira (relevo, hidrografia, clima e vegetação)',
+  'A população: crescimento, distribuição, estrutura e movimentos',
+  'As atividades econômicas: industrialização e urbanização, fontes de energia e agropecuária',
+  'Os impactos ambientais',
+  'Atualidades: fatos políticos, econômicos, sociais e culturais, nacionais e internacionais, ocorridos a partir de 6 meses anteriores à publicação do Edital'
  ]},
  {name:'4. Noções Básicas de Informática',topics:[
-   'MS-Windows 10: conceito de pastas, diretórios, arquivos e atalhos, área de trabalho, área de transferência, manipulação de arquivos e pastas, uso dos menus, programas e aplicativos, interação com o conjunto de aplicativos MS-Office 2016',
-   'MS-Word 2016: estrutura básica dos documentos, edição e formatação de textos, cabeçalhos, parágrafos, fontes, colunas, marcadores simbólicos e numéricos, tabelas, impressão, controle de quebras e numeração de páginas, legendas, índices, inserção de objetos, campos predefinidos, caixas de texto',
-   'MS-Excel 2016: estrutura básica das planilhas, conceitos de células, linhas, colunas, pastas e gráficos, elaboração de tabelas e gráficos, uso de fórmulas, funções e macros, impressão, inserção de objetos, campos predefinidos, controle de quebras e numeração de páginas, obtenção de dados externos, classificação de dados',
-   'MS-PowerPoint 2016: estrutura básica das apresentações, conceitos de slides, anotações, régua, guias, cabeçalhos e rodapés, noções de edição e formatação de apresentações, inserção de objetos, numeração de páginas, botões de ação, animação e transição entre slides',
-   'Correio Eletrônico: uso de correio eletrônico, preparo e envio de mensagens, anexação de arquivos',
-   'Internet: navegação na Internet, conceitos de URL, links, sites, busca e impressão de páginas',
-   'Tópicos básicos de ambientes Google Workspace (Gmail, Agenda, Meet, Chat, Drive, Documentos, Planilhas, Apresentações, Formulários)',
-   'Tópicos básicos de ambientes do Microsoft Teams (chats, chamadas de áudio e vídeo, criação de grupos, trabalho colaborativo usando ferramentas como Word, Excel, PowerPoint)'
+  'MS-Windows 10: conceito de pastas, diretórios, arquivos e atalhos, área de trabalho, área de transferência, manipulação de arquivos e pastas, uso dos menus, programas e aplicativos, interação com o conjunto de aplicativos MS-Office 2016',
+  'MS-Word 2016: estrutura básica dos documentos, edição e formatação de textos, cabeçalhos, parágrafos, fontes, colunas, marcadores simbólicos e numéricos, tabelas, impressão, controle de quebras e numeração de páginas, legendas, índices, inserção de objetos, campos predefinidos, caixas de texto',
+  'MS-Excel 2016: estrutura básica das planilhas, conceitos de células, linhas, colunas, pastas e gráficos, elaboração de tabelas e gráficos, uso de fórmulas, funções e macros, impressão, inserção de objetos, campos predefinidos, controle de quebras e numeração de páginas, obtenção de dados externos, classificação de dados',
+  'MS-PowerPoint 2016: estrutura básica das apresentações, conceitos de slides, anotações, régua, guias, cabeçalhos e rodapés, noções de edição e formatação de apresentações, inserção de objetos, numeração de páginas, botões de ação, animação e transição entre slides',
+  'Correio Eletrônico: uso de correio eletrônico, preparo e envio de mensagens, anexação de arquivos',
+  'Internet: navegação na Internet, conceitos de URL, links, sites, busca e impressão de páginas',
+  'Tópicos básicos de ambientes Google Workspace (Gmail, Agenda, Meet, Chat, Drive, Documentos, Planilhas, Apresentações, Formulários)',
+  'Tópicos básicos de ambientes do Microsoft Teams (chats, chamadas de áudio e vídeo, criação de grupos, trabalho colaborativo usando ferramentas como Word, Excel, PowerPoint)'
  ]},
  {name:'5. Noções de Administração Pública',topics:[
-   'Constituição Federal: Título II - Dos Direitos e Garantias Fundamentais (Cap. I - Direitos e Deveres Individuais e Coletivos; Cap. IV - Direitos Políticos)',
-   'Constituição Federal: Título III - Da Organização do Estado (Administração Pública e Militares dos Estados, do Distrito Federal e dos Territórios)',
-   'Constituição Federal: Título V - Da Defesa do Estado e das Instituições Democráticas (Segurança Pública)',
-   'Constituição do Estado de São Paulo: Título II - Da Organização dos Poderes (Poder Executivo e Poder Judiciário / Justiça Militar)',
-   'Constituição do Estado de São Paulo: Título III - Da Organização do Estado (Administração Pública, Servidores Públicos Civis e Militares, Segurança Pública e Polícia Militar)',
-   'Lei Federal nº 12.527/11 (Lei de Acesso à Informação) e Decreto nº 68.155/23 (Regulamentação estadual)'
+  'Constituição Federal: Título II - Dos Direitos e Garantias Fundamentais (Cap. I - Direitos e Deveres Individuais e Coletivos; Cap. IV - Direitos Políticos)',
+  'Constituição Federal: Título III - Da Organização do Estado (Administração Pública e Militares dos Estados, do Distrito Federal e dos Territórios)',
+  'Constituição Federal: Título V - Da Defesa do Estado e das Instituições Democráticas (Segurança Pública)',
+  'Constituição do Estado de São Paulo: Título II - Da Organização dos Poderes (Poder Executivo e Poder Judiciário / Justiça Militar)',
+  'Constituição do Estado de São Paulo: Título III - Da Organização do Estado (Administração Pública, Servidores Públicos Civis e Militares, Segurança Pública e Polícia Militar)',
+  'Lei Federal nº 12.527/11 (Lei de Acesso à Informação) e Decreto nº 68.155/23 (Regulamentação estadual)'
  ]}
 ]};
-
 
 const editalUFBA={name:'UFBA - ASSISTENTE EM ADMINISTRAÇÃO',date:'2026-12-20',dateLabel:'20 de dezembro de 2026',status:'EDITAL PUBLICADO',board:'UFBA / Prodep',subjects:[
   {name:'1. Língua Portuguesa',topics:['Compreensão e interpretação de textos','Tipologia textual','Ortografia e acentuação','Coesão e coerência','Sintaxe da oração e do período','Crase','Pontuação']},
@@ -513,8 +497,6 @@ const editalMatrices={
  pmesp_soldado: editalPMESP_Soldado
 };
 
-
-
 const EDITAL_STORAGE='edital_verticalizado_data';
 let editalData={};
 try{editalData=JSON.parse(localStorage.getItem(EDITAL_STORAGE)||'{}')||{}}catch(e){editalData={}}
@@ -581,7 +563,6 @@ function renderizarDropdownCustomizado() {
     ...editalMatrices[id]
   }));
 
-  // Ordenar: favoritados ficam no topo
   editaisArray.sort((a, b) => {
     const aFav = favs.includes(a.id);
     const bFav = favs.includes(b.id);
@@ -609,7 +590,6 @@ function renderizarDropdownCustomizado() {
         <span class="text-base">${isFav ? '<span class="text-amber-400">★</span>' : '☆'}</span>
       </button>
     `;
-
     container.appendChild(item);
   });
 
@@ -628,7 +608,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// --- RENDERIZAR CARD DA PROVA & CONTAGEM REGRESSIVA ---
 function renderExamCard(id){
   const e=editalMatrices[id];
   if(!e) return;
@@ -688,7 +667,6 @@ function renderExamCard(id){
   }
 }
 
-// --- RENDERIZAR EDITAL VERTICALIZADO ---
 function renderEdital(){
   const selected=editalAtivoId,
         e=editalMatrices[selected],
@@ -796,35 +774,39 @@ function populateEditSubjects(){const el=document.getElementById('editHistorySub
 function openEditHistory(kind,index){const i=Number(index);if(!Number.isInteger(i)||i<0)return;populateEditSubjects();const isSession=kind==='session';const item=isSession?data.sessions[i]:kind==='question'?data.questions[i]:null;if(!item)return;document.getElementById('editHistoryKind').value=kind;document.getElementById('editHistoryIndex').value=String(i);document.getElementById('editHistorySubject').value=item.subject;const timeFields=document.getElementById('editTimeFields'),questionFields=document.getElementById('editQuestionFields');document.getElementById('editHistoryTitle').textContent=isSession?'Editar sessão':'Editar questões';document.getElementById('editHistorySubtitle').textContent=isSession?'Corrija a disciplina ou a duração do lançamento.':'Corrija a disciplina, o total de questões ou os acertos.';timeFields.classList.toggle('hidden',!isSession);questionFields.classList.toggle('hidden',isSession);if(isSession){const totalSeconds=Math.max(0,Math.floor(Number(item.duration||0)));document.getElementById('editHistoryHours').value=Math.floor(totalSeconds/3600);document.getElementById('editHistoryMinutes').value=Math.floor(totalSeconds%3600/60);document.getElementById('editHistoryHours').required=true;document.getElementById('editHistoryMinutes').required=true;document.getElementById('editHistoryTotal').required=false;document.getElementById('editHistoryHits').required=false;document.getElementById('editHistoryHint').textContent='O tempo será recalculado em segundos e todos os indicadores serão atualizados.'}else{document.getElementById('editHistoryTotal').value=Number(item.total||0);document.getElementById('editHistoryHits').value=Number(item.hits||0);document.getElementById('editHistoryTotal').required=true;document.getElementById('editHistoryHits').required=true;document.getElementById('editHistoryHours').required=false;document.getElementById('editHistoryMinutes').required=false;document.getElementById('editHistoryHint').textContent='A taxa de acerto e os gráficos serão recalculados automaticamente.'}open('editHistoryModal');lucide.createIcons()}
 document.getElementById('editHistoryForm').onsubmit=e=>{e.preventDefault();const kind=document.getElementById('editHistoryKind').value,index=Number(document.getElementById('editHistoryIndex').value);if(!Number.isInteger(index)||index<0)return;if(kind==='session'){const s=data.sessions[index];if(!s)return;const hours=Math.max(0,Math.floor(Number(document.getElementById('editHistoryHours').value)||0));const minutes=Math.max(0,Math.min(59,Math.floor(Number(document.getElementById('editHistoryMinutes').value)||0)));const duration=hours*3600+minutes*60;if(duration<60){alert('Informe pelo menos 1 minuto de duração.');return}s.subject=document.getElementById('editHistorySubject').value;delete s.type;s.duration=duration}else if(kind==='question'){const q=data.questions[index];if(!q)return;const total=Math.floor(Number(document.getElementById('editHistoryTotal').value)||0);const hits=Math.floor(Number(document.getElementById('editHistoryHits').value)||0);if(total<1||hits<0||hits>total){alert('Verifique o total de questões e os acertos.');return}q.subject=document.getElementById('editHistorySubject').value;q.total=total;q.hits=hits}else{return}save();close('editHistoryModal');renderAll()};
 
-// events
 // events e inicialização seguros
 document.addEventListener('DOMContentLoaded', () => {
-    // Carrega os dados salvos
     if (typeof load === 'function') {
         data = load();
     }
 
-    // Vincula os eventos aos botões agora que o HTML existe
     Array.from(document.querySelectorAll('[data-close]')).forEach(b=>b.addEventListener('click',()=>close(b.dataset.close)));
+    
     const configureGoalsBtn = document.getElementById('configureGoalsBtn');
-document.getElementById('exportBtn').onclick = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: 'application/json'}));
-    a.download = 'studydash-backup.json';
-    a.click();
-};    const goalsForm = document.getElementById('goalsForm');
+    if(configureGoalsBtn) configureGoalsBtn.onclick=()=>document.getElementById('goalStudyInput').value=data.goals.studyMinutes;
+    
+    const goalsForm = document.getElementById('goalsForm');
     if(goalsForm) goalsForm.onsubmit=e=>{e.preventDefault();data.goals={studyMinutes:Number(goalStudyInput.value),questions:Number(goalQuestionsInput.value),accuracy:Number(goalAccuracyInput.value)};save();close('goalsModal');renderGoals();};
     
     const startBtn = document.getElementById('startBtn');
     if(startBtn) startBtn.onclick=startTimer;
+    
     const pauseBtn = document.getElementById('pauseBtn');
     if(pauseBtn) pauseBtn.onclick=pauseTimer;
+    
+    const saveTimerBtn = document.getElementById('saveTimerBtn');
+    if(saveTimerBtn) saveTimerBtn.onclick=saveCurrent;
     
     const addQuestionsBtn = document.getElementById('addQuestionsBtn');
     if(addQuestionsBtn) addQuestionsBtn.onclick=()=>open('questionsModal');
     
     const exportBtn = document.getElementById('exportBtn');
-    if(exportBtn) exportBtn.onclick=()=>const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='studydash-backup.json';a.click();
+    if(exportBtn) exportBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: 'application/json'}));
+        a.download = 'studydash-backup.json';
+        a.click();
+    };
     
     const importInput = document.getElementById('importInput');
     if(importInput) importInput.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);data=normalizeStoredData(parsed)||freshData();save();renderAll();alert('Importado com sucesso!');}catch(err){alert('Erro ao importar arquivo.');}};r.readAsText(f);};
@@ -832,8 +814,10 @@ document.getElementById('exportBtn').onclick = () => {
     const resetDataBtn = document.getElementById('resetDataBtn');
     if(resetDataBtn) resetDataBtn.onclick=()=>{if(!confirm('Isso apagará todas as sessões e questões e restaurará as padrão. Deseja continuar?'))return;localStorage.removeItem(STORAGE);data=freshData();save();renderAll();};
 
-    // Inicializa a tela e o cronômetro
     updateTimer();
     renderAll();
 });
-</body></html>
+})();
+</script>
+</body>
+</html>
