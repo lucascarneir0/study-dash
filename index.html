@@ -807,8 +807,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vincula os eventos aos botões agora que o HTML existe
     Array.from(document.querySelectorAll('[data-close]')).forEach(b=>b.addEventListener('click',()=>close(b.dataset.close)));
     const configureGoalsBtn = document.getElementById('configureGoalsBtn');
-    if(configureGoalsBtn) configureGoalsBtn.onclick=()=>document.getElementById('goalStudyInput').value=data.goals.studyMinutes;
-    const goalsForm = document.getElementById('goalsForm');
+document.getElementById('exportBtn').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: 'application/json'}));
+    a.download = 'studydash-backup.json';
+    a.click();
+};    const goalsForm = document.getElementById('goalsForm');
     if(goalsForm) goalsForm.onsubmit=e=>{e.preventDefault();data.goals={studyMinutes:Number(goalStudyInput.value),questions:Number(goalQuestionsInput.value),accuracy:Number(goalAccuracyInput.value)};save();close('goalsModal');renderGoals();};
     
     const startBtn = document.getElementById('startBtn');
